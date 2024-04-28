@@ -64,7 +64,7 @@ public class CountingListener {
     private Mono<Void> handle(MessageCreateEvent event) {
         Snowflake channelId = event.getMessage().getChannelId();
         String message = event.getMessage().getContent().strip();
-        String numbers = message.replaceAll("[^0-9.-]", "");
+        String numbers = message.replaceAll("[^0-9.]", "");
         String expression = message.replaceAll("[^0-9.()^%/*+-]", "");
 
         // Check if message should be ignored - ie normal chat message
