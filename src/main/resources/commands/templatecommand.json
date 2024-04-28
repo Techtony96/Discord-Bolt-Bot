@@ -1,0 +1,13 @@
+{
+  "name": "templatecommand",
+  "description": "Example Command",
+  "dm_permission": false,
+  "options": [
+    {
+      "name": "option1",
+      "description": "",
+      "type": 8,
+      "required": false
+    }
+  ]
+}
