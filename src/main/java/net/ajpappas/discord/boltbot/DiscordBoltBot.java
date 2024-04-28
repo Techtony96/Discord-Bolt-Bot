@@ -1,4 +1,4 @@
-package net.ajpappas.discord.templatebot;
+package net.ajpappas.discord.boltbot;
 
 import discord4j.core.DiscordClientBuilder;
 import discord4j.core.GatewayDiscordClient;
@@ -13,7 +13,7 @@ import org.springframework.context.annotation.Bean;
 
 
 @SpringBootApplication(scanBasePackages = "net.ajpappas.discord")
-public class DiscordTemplateBot implements CommandLineRunner {
+public class DiscordBoltBot implements CommandLineRunner {
 
     private static final Logger log = LogManager.getLogger();
 
@@ -24,7 +24,7 @@ public class DiscordTemplateBot implements CommandLineRunner {
     private String botVersion;
 
     public static void main(String[] args) {
-        SpringApplication.run(DiscordTemplateBot.class, args);
+        SpringApplication.run(DiscordBoltBot.class, args);
     }
 
     @Bean

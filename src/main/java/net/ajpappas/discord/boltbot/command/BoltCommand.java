@@ -1,4 +1,4 @@
-package net.ajpappas.discord.templatebot.command;
+package net.ajpappas.discord.boltbot.command;
 
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.rest.util.PermissionSet;
@@ -7,11 +7,11 @@ import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
 @Component
-public class TemplateCommand implements SlashCommand {
+public class BoltCommand implements SlashCommand {
 
     @Override
     public String getName() {
-        return "template";
+        return "bolt";
     }
 
     @Override
@@ -21,6 +21,6 @@ public class TemplateCommand implements SlashCommand {
 
     @Override
     public Mono<Void> handle(ChatInputInteractionEvent event) {
-        return event.reply("Template command");
+        return event.reply("Bolt command");
     }
 }

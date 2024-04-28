@@ -10,7 +10,7 @@
         <version>1.1-SNAPSHOT</version>
     </parent>
 
-    <artifactId>Template-Bot</artifactId>
+    <artifactId>Bolt-Bot</artifactId>
 
     <repositories>
         <repository>
@@ -18,5 +18,15 @@
             <url>https://maven.pkg.github.com/Techtony96/*</url>
         </repository>
     </repositories>
+
+    <dependencies>
+        <dependency>
+            <!-- For evaluating mathematical expressions for counting bot -->
+            <groupId>net.objecthunter</groupId>
+            <artifactId>exp4j</artifactId>
+            <version>0.4.8</version>
+        </dependency>
+
+    </dependencies>
 
 </project>
