@@ -14,6 +14,7 @@ import discord4j.core.spec.MessageCreateSpec;
 import discord4j.discordjson.json.EmojiData;
 import discord4j.rest.util.PermissionSet;
 import lombok.Data;
+import lombok.extern.log4j.Log4j2;
 import net.ajpappas.discord.common.util.ErrorHandler;
 import net.objecthunter.exp4j.ExpressionBuilder;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,6 +27,7 @@ import java.util.Map;
 import java.util.Objects;
 
 @Component
+@Log4j2
 public class CountingListener {
     /*
      * TODO Add highscores
@@ -55,17 +57,19 @@ public class CountingListener {
 
     @Autowired
     public CountingListener(GatewayDiscordClient client) {
-        client.on(MessageCreateEvent.class)
-                .filterWhen(s -> s.getMessage().getChannel().ofType(TextChannel.class).map(t -> "counting".equalsIgnoreCase(t.getName())))
-                .flatMap(this::handle)
-                .subscribe();
+        client.on(MessageCreateEvent.class, this::handle).subscribe();
     }
 
     private Mono<Void> handle(MessageCreateEvent event) {
+        String channelName = event.getMessage().getChannel().ofType(TextChannel.class).map(TextChannel::getName).block();
         Snowflake channelId = event.getMessage().getChannelId();
         String message = event.getMessage().getContent().strip();
         String numbers = message.replaceAll("[^0-9.]", "");
         String expression = message.replaceAll("[^0-9.()^%/*+-]", "");
+
+        if (!"counting".equalsIgnoreCase(channelName))
+            return Mono.empty();
+
 
         // Check if message should be ignored - ie normal chat message
         if (message.matches(".*[A-Za-z].*"))
