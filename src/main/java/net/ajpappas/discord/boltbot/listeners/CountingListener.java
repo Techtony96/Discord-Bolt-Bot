@@ -1,23 +1,15 @@
 package net.ajpappas.discord.boltbot.listeners;
 
 import discord4j.common.util.Snowflake;
-import discord4j.core.GatewayDiscordClient;
-import discord4j.core.event.domain.interaction.ButtonInteractionEvent;
 import discord4j.core.event.domain.message.MessageCreateEvent;
-import discord4j.core.object.entity.Message;
-import discord4j.core.object.entity.channel.Channel;
-import discord4j.core.object.entity.channel.MessageChannel;
 import discord4j.core.object.entity.channel.TextChannel;
-import discord4j.core.object.reaction.Reaction;
 import discord4j.core.object.reaction.ReactionEmoji;
-import discord4j.core.spec.MessageCreateSpec;
-import discord4j.discordjson.json.EmojiData;
-import discord4j.rest.util.PermissionSet;
 import lombok.Data;
 import lombok.extern.log4j.Log4j2;
-import net.ajpappas.discord.common.util.ErrorHandler;
+import net.ajpappas.discord.common.event.EventListener;
+import net.ajpappas.discord.common.util.EventFilters;
 import net.objecthunter.exp4j.ExpressionBuilder;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.reactivestreams.Publisher;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
@@ -25,13 +17,20 @@ import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Function;
+import java.util.function.Predicate;
 
 @Component
 @Log4j2
-public class CountingListener {
+public class CountingListener implements EventListener<MessageCreateEvent> {
     /*
      * TODO Add highscores
+     * TODO more precision
+     * TODO command to see current count
+     * TODO more math operands
      */
+
+    private static final String CHANNEL_NAME = "counting";
 
     private static final ReactionEmoji COUNTING_SUCCESS = ReactionEmoji.unicode("\u2705");
     private static final ReactionEmoji COUNTING_ERROR = ReactionEmoji.unicode("\u274C");
@@ -54,22 +53,33 @@ public class CountingListener {
         }
     }
 
-
-    @Autowired
-    public CountingListener(GatewayDiscordClient client) {
-        client.on(MessageCreateEvent.class, this::handle).subscribe();
+    @Override
+    public Class<MessageCreateEvent> getEventType() {
+        return MessageCreateEvent.class;
     }
 
-    private Mono<Void> handle(MessageCreateEvent event) {
-        String channelName = event.getMessage().getChannel().ofType(TextChannel.class).map(TextChannel::getName).block();
+    @Override
+    public Predicate<? super MessageCreateEvent> filters() {
+        return EventFilters.NO_BOTS;
+    }
+
+    @Override
+    public Function<? super MessageCreateEvent, ? extends Publisher<Boolean>> asyncFilters() {
+        return event -> event.getMessage().getChannel().ofType(TextChannel.class).map(TextChannel::getName).map(CHANNEL_NAME::equalsIgnoreCase);
+    }
+
+    @Override
+    public Mono<Void> error(Throwable throwable) {
+        log.error("Error while processing counting message", throwable);
+        return Mono.empty();
+    }
+
+    @Override
+    public Mono<Void> handle(MessageCreateEvent event) {
         Snowflake channelId = event.getMessage().getChannelId();
         String message = event.getMessage().getContent().strip();
         String numbers = message.replaceAll("[^0-9.]", "");
         String expression = message.replaceAll("[^0-9.()^%/*+-]", "");
-
-        if (!"counting".equalsIgnoreCase(channelName))
-            return Mono.empty();
-
 
         // Check if message should be ignored - ie normal chat message
         if (message.matches(".*[A-Za-z].*"))
