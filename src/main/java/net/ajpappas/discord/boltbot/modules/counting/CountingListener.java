@@ -1,22 +1,22 @@
-package net.ajpappas.discord.boltbot.listeners;
+package net.ajpappas.discord.boltbot.modules.counting;
 
 import discord4j.common.util.Snowflake;
 import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.object.entity.channel.TextChannel;
 import discord4j.core.object.reaction.ReactionEmoji;
-import lombok.Data;
+import lombok.AccessLevel;
+import lombok.Getter;
 import lombok.extern.log4j.Log4j2;
 import net.ajpappas.discord.common.event.EventListener;
 import net.ajpappas.discord.common.util.EventFilters;
-import net.objecthunter.exp4j.ExpressionBuilder;
 import org.reactivestreams.Publisher;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
-import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
@@ -25,8 +25,6 @@ import java.util.function.Predicate;
 public class CountingListener implements EventListener<MessageCreateEvent> {
     /*
      * TODO Add highscores
-     * TODO more precision
-     * TODO command to see current count
      * TODO more math operands
      */
 
@@ -40,17 +38,14 @@ public class CountingListener implements EventListener<MessageCreateEvent> {
     private static final String NEW_HIGH_SCORE = "New highscore! \uD83C\uDF89 How much higher can you count?";
 
     // Channel ID -> Counting Data
+    @Getter(AccessLevel.PROTECTED)
     private final Map<Snowflake, CountingData> currentCountMap = new HashMap<>();
 
-    @Data
-    private static class CountingData {
-        private BigDecimal count;
-        private Snowflake lastUser;
-        private BigDecimal highscore;
+    private final ExpressionEvaluator evaluator;
 
-        CountingData() {
-            this.count = BigDecimal.ZERO;
-        }
+    @Autowired
+    public CountingListener(ExpressionEvaluator evaluator) {
+        this.evaluator = evaluator;
     }
 
     @Override
@@ -77,52 +72,50 @@ public class CountingListener implements EventListener<MessageCreateEvent> {
     @Override
     public Mono<Void> handle(MessageCreateEvent event) {
         Snowflake channelId = event.getMessage().getChannelId();
-        String message = event.getMessage().getContent().strip();
-        String numbers = message.replaceAll("[^0-9.]", "");
-        String expression = message.replaceAll("[^0-9.()^%/*+-]", "");
+        String message = event.getMessage().getContent();
 
-        // Check if message should be ignored - ie normal chat message
-        if (message.matches(".*[A-Za-z].*"))
+        if (message == null || message.isBlank())
             return Mono.empty();
 
-        // No expression, simple count
-        BigDecimal newCount;
-        if (Objects.equals(numbers, expression)) {
-            newCount = new BigDecimal(numbers);
-        } else {
+        long newCount;
+        try {
+            newCount = Long.parseLong(message);
+        } catch (Exception e) {
             try {
-                newCount = BigDecimal.valueOf(new ExpressionBuilder(expression).build().evaluate());
-            } catch (Exception e) {
+                newCount = evaluator.evaluate(message).setScale(0, RoundingMode.HALF_UP).longValueExact();
+            } catch (Exception e2) {
                 return event.getMessage().addReaction(CAN_NOT_EVALUATE);
             }
         }
 
-        CountingData countingData = currentCountMap.computeIfAbsent(channelId, s -> new CountingData());
-        BigDecimal lastCount = countingData.getCount();
 
-        if (isValid(lastCount, newCount) && !event.getMember().get().getId().equals(countingData.getLastUser()))  {
+
+        CountingData countingData = currentCountMap.computeIfAbsent(channelId, s -> new CountingData());
+        long lastCount = countingData.getCount();
+
+        if (isValid(lastCount, newCount) /*&& !event.getMember().get().getId().equals(countingData.getLastUser())*/)  {
             // Count was successfully increased by 1 or less
             countingData.setCount(newCount);
             countingData.setLastUser(event.getMember().get().getId());
             return event.getMessage().addReaction(COUNTING_SUCCESS);
         } else {
             // New count is wrong
-            countingData.setCount(BigDecimal.ZERO);
+            countingData.setCount(0L);
             countingData.setLastUser(null);
             return event.getMessage().addReaction(COUNTING_ERROR)
                     .and(event.getMessage().getChannel().ofType(TextChannel.class)
-                            .flatMap(c -> c.createMessage(String.format(COUNTING_ERROR_RESPONSE, event.getMember().get().getMention(), lastCount.toPlainString())))
+                            .flatMap(c -> c.createMessage(String.format(COUNTING_ERROR_RESPONSE, event.getMember().get().getMention(), lastCount)))
                     );
         }
     }
 
-    private boolean isValid(BigDecimal lastCount, BigDecimal newCount) {
+    private boolean isValid(long lastCount, long newCount) {
         // new count is greater than last count
-        if (newCount.compareTo(lastCount) <= 0)
+        if (newCount <= lastCount)
             return false;
 
         // new count is within +1 of last count
-        if (newCount.subtract(lastCount).compareTo(BigDecimal.ONE) > 0)
+        if (newCount - lastCount > 1)
             return false;
 
         return true;
