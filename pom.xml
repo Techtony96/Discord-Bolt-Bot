@@ -24,7 +24,7 @@
             <!-- For evaluating mathematical expressions for counting bot -->
             <groupId>com.ezylang</groupId>
             <artifactId>EvalEx</artifactId>
-            <version>3.2.0</version>
+            <version>3.3.0</version>
         </dependency>
         <dependency>
             <!-- For evaluating mathematical expressions for counting bot -->
