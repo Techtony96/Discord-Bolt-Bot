@@ -14,6 +14,7 @@ import net.ajpappas.discord.common.util.EventFilters;
 import org.reactivestreams.Publisher;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.math.RoundingMode;
@@ -92,7 +93,7 @@ public class CountingListener implements EventListener<MessageCreateEvent> {
 
         // Check if we restarted, load from last message
         if (!currentCountMap.containsKey(channelId)) {
-            String lastMessage = event.getMessage().getChannel().flatMap(MessageChannel::getLastMessage).map(Message::getContent).block();
+            String lastMessage = event.getMessage().getChannel().map(c -> c.getMessagesBefore(event.getMessage().getId())).map(Flux::blockFirst).map(Message::getContent).block();
             long forgottenCount = 0;
             try {
                 forgottenCount = Long.parseLong(lastMessage);
