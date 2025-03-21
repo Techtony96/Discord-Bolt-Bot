@@ -2,6 +2,8 @@ package net.ajpappas.discord.boltbot.modules.counting;
 
 import discord4j.common.util.Snowflake;
 import discord4j.core.event.domain.message.MessageCreateEvent;
+import discord4j.core.object.entity.Message;
+import discord4j.core.object.entity.channel.MessageChannel;
 import discord4j.core.object.entity.channel.TextChannel;
 import discord4j.core.object.reaction.ReactionEmoji;
 import lombok.AccessLevel;
@@ -28,7 +30,7 @@ public class CountingListener implements EventListener<MessageCreateEvent> {
      * TODO more math operands
      */
 
-    private static final String CHANNEL_NAME = "counting";
+    static final String CHANNEL_NAME = "counting";
 
     private static final ReactionEmoji COUNTING_SUCCESS = ReactionEmoji.unicode("\u2705");
     private static final ReactionEmoji COUNTING_ERROR = ReactionEmoji.unicode("\u274C");
@@ -88,8 +90,25 @@ public class CountingListener implements EventListener<MessageCreateEvent> {
             }
         }
 
-
-
+        // Check if we restarted, load from last message
+        if (!currentCountMap.containsKey(channelId)) {
+            String lastMessage = event.getMessage().getChannel().flatMap(MessageChannel::getLastMessage).map(Message::getContent).block();
+            long forgottenCount = 0;
+            try {
+                forgottenCount = Long.parseLong(lastMessage);
+            } catch (Exception e) {
+                try {
+                    forgottenCount = evaluator.evaluate(lastMessage).setScale(0, RoundingMode.HALF_UP).longValueExact();
+                } catch (Exception e2) {
+                    // Last message wasn't a count. Ignore.
+                }
+            }
+            if (forgottenCount > 0) {
+                currentCountMap.put(channelId, new CountingData(forgottenCount));
+                String msg = "Count forgotten, re-initialized count back to " + forgottenCount + ".";
+                event.getMessage().getChannel().map(c -> c.createMessage(msg)).block();
+            }
+        }
         CountingData countingData = currentCountMap.computeIfAbsent(channelId, s -> new CountingData());
         long lastCount = countingData.getCount();
 

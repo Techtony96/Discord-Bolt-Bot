@@ -12,4 +12,8 @@ class CountingData {
     CountingData() {
         this.count = 0L;
     }
+
+    CountingData(long startingCount) {
+        this.count = startingCount;
+    }
 }
